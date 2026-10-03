@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice & Quotation Manager</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">Invoice<span>Pro</span></div>
+    <button data-page="invoice" class="nav active">Create Invoice</button>
+    <button data-page="quotation" class="nav">Create Quotation</button>
+    <button data-page="products" class="nav">Products</button>
+    <button data-page="files" class="nav">Save Files</button>
+    <button data-page="settings" class="nav">Company Settings</button>
+  </aside>
+  <main class="main">
+    <header><h1 id="pageTitle">Create Invoice</h1></header>
+
+    <section id="invoice" class="page active">
+      <div class="card">
+        <div class="grid four">
+          <label>Invoice Number<input id="invoiceNo" readonly></label>
+          <label>Date<input id="invoiceDate" type="date"></label>
+          <label>Customer Name<input id="invoiceCustomer"></label>
+          <label>Phone Number<input id="invoicePhone"></label>
+        </div>
+        <div class="grid two">
+          <label>Address<textarea id="invoiceAddress"></textarea></label>
+          <label>Sales Person Name<input id="invoiceSales"></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="product-add">
+          <input id="invoiceSearch" placeholder="Search product by name or code">
+          <select id="invoiceProduct" onchange="syncSelectedPrice('invoice')"></select>
+          <input id="invoicePrice" class="selected-price" type="number" min="0" step="0.01" placeholder="Price / Discount Price">
+          <button class="primary" onclick="addLine('invoice')">+ Add Product</button>
+        </div>
+        <div id="invoiceLines"></div>
+        <div id="invoiceTotals" class="totals"></div>
+      </div>
+      <div class="actions"><button class="primary" onclick="savePDF('invoice')">Save PDF</button><button class="secondary" onclick="newDocument('invoice')">New Invoice</button></div>
+    </section>
+
+    <section id="quotation" class="page">
+      <div class="card">
+        <div class="grid four">
+          <label>Quotation Number<input id="quotationNo" readonly></label>
+          <label>Date<input id="quotationDate" type="date"></label>
+          <label>Customer Name<input id="quotationCustomer"></label>
+          <label>Phone Number<input id="quotationPhone"></label>
+        </div>
+        <div class="grid two">
+          <label>Address<textarea id="quotationAddress"></textarea></label>
+          <label>Sales Person Name<input id="quotationSales"></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="product-add">
+          <input id="quotationSearch" placeholder="Search product by name or code">
+          <select id="quotationProduct" onchange="syncSelectedPrice('quotation')"></select>
+          <input id="quotationPrice" class="selected-price" type="number" min="0" step="0.01" placeholder="Price / Discount Price">
+          <button class="primary" onclick="addLine('quotation')">+ Add Product</button>
+        </div>
+        <div id="quotationLines"></div>
+        <div id="quotationTotals" class="totals"></div>
+      </div>
+      <div class="actions"><button class="primary" onclick="savePDF('quotation')">Save PDF</button><button class="secondary" onclick="newDocument('quotation')">New Quotation</button></div>
+    </section>
+
+    <section id="products" class="page">
+      <div class="card">
+        <h2>Add Product</h2>
+        <div class="grid six">
+          <label>Product Name<input id="pName"></label>
+          <label>Product Code<input id="pCode"></label>
+          <label>Price<input id="pPrice" type="number" min="0" step="0.01"></label>
+          <label>Quantity<input id="pQty" type="number" min="0" step="1" value="0"></label>
+          <label>GST %<input id="pGst" type="number" min="0" step="0.01" value="18"></label>
+          <label>Product Image<input id="pImage" type="file" accept="image/*"></label>
+        </div>
+        <button class="primary" onclick="addProduct()">Add Product</button>
+      </div>
+      <div class="card"><h2>Products</h2><input id="productSearch" class="search" placeholder="Search products..." oninput="renderProducts()"><div id="productList"></div></div>
+    </section>
+
+    <section id="files" class="page">
+      <div class="card"><h2>Saved Files</h2><div class="tabs"><button onclick="renderFiles('all')">All</button><button onclick="renderFiles('invoice')">Invoices</button><button onclick="renderFiles('quotation')">Quotations</button></div><div id="fileList"></div></div>
+    </section>
+
+    <section id="settings" class="page">
+      <div class="card">
+        <h2>Company Details</h2>
+        <div class="grid two">
+          <label>Company Name<input id="sName"></label><label>GSTIN<input id="sGst"></label>
+          <label>Phone<input id="sPhone"></label><label>Email<input id="sEmail"></label>
+          <label>Website<input id="sWebsite"></label><label>Address<textarea id="sAddress"></textarea></label>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Bank Details</h2>
+        <div class="grid two">
+          <label>Bank Name<input id="sBank"></label><label>Account Name<input id="sAccountName"></label>
+          <label>Account Number<input id="sAccountNo"></label><label>IFSC<input id="sIfsc"></label>
+          <label>Branch<input id="sBranch"></label><label>UPI ID<input id="sUpi"></label>
+        </div>
+        <button class="primary" onclick="saveSettings()">Save Settings</button>
+        <span id="settingsStatus"></span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="pdfArea" class="pdf-area"></div>
+<script src="app.js"></script>
+</body>
+</html>
