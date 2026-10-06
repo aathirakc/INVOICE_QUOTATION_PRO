@@ -61,12 +61,12 @@ function saveSettings(){
 function loadSettings(){let s=settings;Object.entries({sName:"name",sAddress:"address",sPhone:"phone",sEmail:"email",sGst:"gst",sWebsite:"website",sBank:"bank",sAccountName:"accountName",sAccountNo:"accountNo",sIfsc:"ifsc",sBranch:"branch",sUpi:"upi"}).forEach(([id,k])=>$(id).value=s[k]||"")}
 function makePDFHTML(type){
  const t=totals(type), s=settings, no=$(type+"No").value, date=$(type+"Date").value, isInvoice=type==="invoice";
- const rows=lines[type].map((l,i)=>{const p=products.find(x=>x.id===l.id);if(!p)return '';const price=Number(l.price??p.price)||0,qty=Number(l.qty)||1,amount=price*qty,tax=amount*(Number(p.gst)||0)/100;
-   return `<tr><td class="num slno">${i+1}</td><td class="image-cell">${p.image?`<img class="pdf-product-image" src="${p.image}" alt="">`:'—'}</td><td><strong>${esc(p.name)}</strong><small>${esc(p.code)}</small></td><td class="num">₹${money(price)}</td>${isInvoice?`<td class="num">${qty}</td>`:""}<td class="num">${p.gst}%</td><td class="num">₹${money(amount)}</td><td class="num">₹${money(tax)}</td><td class="num">₹${money(amount+tax)}</td></tr>`}).join('');
+ const rows=lines[type].map((l,i)=>{const p=products.find(x=>x.id===l.id);if(!p)return '';const price=Number(l.price??p.price)||0,qty=isInvoice?(Number(l.qty)||1):1,amount=price*qty,tax=amount*(Number(p.gst)||0)/100;
+   return `<tr><td class="num slno">${i+1}</td><td class="image-cell">${p.image?`<img class="pdf-product-image" src="${p.image}" alt="">`:'—'}</td><td><strong>${esc(p.name)}</strong><small>${esc(p.code)}</small></td><td class="num">₹${money(price)}</td><td class="num">${qty}</td><td class="num">${p.gst}%</td><td class="num">₹${money(amount)}</td><td class="num">₹${money(tax)}</td><td class="num">₹${money(amount+tax)}</td></tr>`}).join('');
  return `<div class="pdf-sheet"><div class="pdf-fixed-header"><img src="${PDF_HEADER}" alt="Company Header"></div><div class="pdf-content">
   <div class="pdf-doc-meta"><div class="pdf-doc-type">${isInvoice?"PROFORMA INVOICE":"QUOTATION"}</div><div><span>${isInvoice?"PI No":"Quotation No"}</span><b>${esc(no)}</b></div><div><span>Date</span><b>${esc(date)}</b></div></div>
    <div class="pdf-customer-block"><div class="pdf-section-title">To</div><div class="customer-grid"><div><span>Customer Name</span><b>${esc($(type+"Customer").value||"—")}</b></div><div><span>Phone Number</span><b>${esc($(type+"Phone").value||"—")}</b></div><div><span>Address</span><b>${nl($(type+"Address").value||"—")}</b></div><div><span>Salesperson Name</span><b>${esc($(type+"Sales").value||"—")}</b></div></div></div>
-   <table class="pdf-items"><thead><tr><th class="num slno">SL No.</th><th class="image-cell">Image</th><th>Product</th><th class="num">Price</th>${isInvoice?`<th class="num">Qty</th>`:""}<th class="num">GST</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
+   <table class="pdf-items"><thead><tr><th class="num slno">SL No.</th><th class="image-cell">Image</th><th>Product</th><th class="num">Price</th><th class="num">Qty</th><th class="num">GST</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
    <div class="pdf-summary"><div><span>Subtotal</span><b>₹${money(t.subtotal)}</b></div><div><span>GST / Tax</span><b>₹${money(t.tax)}</b></div><div class="pdf-grand"><span>Grand Total</span><b>₹${money(t.total)}</b></div></div>
    <div class="pdf-info-grid"><div class="pdf-info-box"><h3>Bank Details</h3><div><span>Bank</span><b>${esc(s.bank||"—")}</b></div><div><span>Account Name</span><b>${esc(s.accountName||"—")}</b></div><div><span>Account No.</span><b>${esc(s.accountNo||"—")}</b></div><div><span>IFSC</span><b>${esc(s.ifsc||"—")}</b></div><div><span>Branch</span><b>${esc(s.branch||"—")}</b></div><div><span>UPI</span><b>${esc(s.upi||"—")}</b></div></div><div class="pdf-info-box"><h3>Terms &amp; Conditions</h3><div>1. Payment Terms: Immediate Payment</div><div>2. Price: Indicates the cost of each item.</div><div>3. Taxes: As shown above.</div><div>4. Shipping Cost: Extra</div></div></div>
    <div class="pdf-signature-section"><img src="${AUTH_SIGNATURE}" alt="Authorised Signature"><div class="pdf-signature-label">Authorised Signature</div></div><div class="pdf-address-bottom"><div class="pdf-company-name">${esc(s.name||"")}</div><div>${s.phone?`Phone: ${esc(s.phone)}`:""}${s.email?` &nbsp; | &nbsp; Email: ${esc(s.email)}`:""}</div><div>${s.gst?`GSTIN: ${esc(s.gst)}`:""}${s.website?` &nbsp; | &nbsp; ${esc(s.website)}`:""}</div><div>${esc(s.address||"")}</div></div>
@@ -126,14 +126,44 @@ async function savePDF(type){
    const fileDate=dateParts?`${dateParts[3]}-${dateParts[2]}-${dateParts[1]}`:rawDate.replace(/[^0-9-]/g,"-");
    const pdfFileName=(filePrefix+"-"+(firstTwoNames||"Customer")+"-"+(fileDate||"Date")+".pdf").replace(/[\\/:*?"<>|]/g,"-");
    pdf.save(pdfFileName);
-   files.push({id:Date.now(),type,no,date:$(type+'Date').value,customer:$(type+'Customer').value,total:totals(type).total,html:area.innerHTML});save();renderFiles('all');
+   files.push({id:Date.now(),type,no,date:$(type+'Date').value,customer:$(type+'Customer').value,total:totals(type).total,html:area.innerHTML,docData:{customer:$(type+'Customer').value,phone:$(type+'Phone').value,address:$(type+'Address').value,sales:$(type+'Sales').value,date:$(type+'Date').value,no:$(type+'No').value,lines:JSON.parse(JSON.stringify(lines[type]))}});save();renderFiles('all');
  }catch(err){console.error('PDF generation error:',err);alert('PDF could not be generated. Please try again.');}
  finally{area.style.position=old.position;area.style.left=old.left||'-100000px';area.style.top=old.top;area.style.zIndex=old.zIndex;area.style.visibility=old.visibility||'hidden';area.style.display=old.display||'block';area.style.width=old.width||'794px'}
 }
 function renderFiles(filter){
  const arr=files.filter(f=>filter==="all"||f.type===filter).slice().reverse();
- $("fileList").innerHTML=arr.length?arr.map(f=>`<div class="file-row"><b>${f.type==="invoice"?"Proforma Invoice":"Quotation"} ${esc(f.no)}</b><span>${esc(f.customer||"")}</span><span>${esc(f.date)}</span><b>₹${money(f.total)}</b><button class="danger" onclick="deleteFile(${f.id})">Delete</button></div>`).join(""):'<div class="empty">No saved files yet. Saved PDFs are also downloaded to your computer.</div>'
+ $("fileList").innerHTML=arr.length?arr.map(f=>`<div class="file-row"><b>${f.type==="invoice"?"Proforma Invoice":"Quotation"} ${esc(f.no)}</b><span>${esc(f.customer||"")}</span><span>${esc(f.date)}</span><b>₹${money(f.total)}</b><div class="file-actions"><button class="secondary" onclick="previewSavedFile(${f.id})">Preview</button><button class="secondary" onclick="editSavedFile(${f.id})">Edit Details</button><button class="primary" onclick="createNewFromSaved(${f.type==='invoice'?"'invoice'":"'quotation'"})">Create New</button><button class="danger" onclick="deleteFile(${f.id})">Delete</button></div></div>`).join(""):'<div class="empty">No saved files yet. Saved PDFs are also downloaded to your computer.</div>'
 }
+function previewSavedFile(id){
+ const f=files.find(x=>x.id===id);
+ if(!f)return;
+ if(!f.html){alert("Preview is not available for this older saved file.");return;}
+ const overlay=document.createElement("div");
+ overlay.className="preview-overlay";
+ overlay.innerHTML=`<div class="preview-dialog"><div class="preview-toolbar"><b>${f.type==="invoice"?"Proforma Invoice":"Quotation"} Preview</b><button class="secondary" onclick="this.closest('.preview-overlay').remove()">Close</button></div><div class="preview-body">${f.html}</div></div>`;
+ document.body.appendChild(overlay);
+ overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove()});
+}
+function editSavedFile(id){
+ const f=files.find(x=>x.id===id);
+ if(!f)return;
+ if(!f.docData){alert("This older saved file does not contain editable details. New saved files will support editing.");return;}
+ const type=f.type, d=f.docData;
+ $(type+"No").value=d.no||f.no||number(type);
+ $(type+"Date").value=d.date||f.date||today();
+ $(type+"Customer").value=d.customer||f.customer||"";
+ $(type+"Phone").value=d.phone||"";
+ $(type+"Address").value=d.address||"";
+ $(type+"Sales").value=d.sales||"";
+ lines[type]=JSON.parse(JSON.stringify(d.lines||[]));
+ updateProducts(type);$(type+"Price").value="";renderLines(type);
+ document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));
+ const nav=document.querySelector(`.nav[data-page="${type}"]`);if(nav)nav.classList.add("active");
+ document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+ $(type).classList.add("active");
+ $("pageTitle").textContent=type==="invoice"?"Create Proforma Invoice":"Create Quotation";
+}
+function createNewFromSaved(type){setupDoc(type);document.querySelectorAll(".nav").forEach(x=>x.classList.remove("active"));const nav=document.querySelector(`.nav[data-page="${type}"]`);if(nav)nav.classList.add("active");document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));$(type).classList.add("active");$("pageTitle").textContent=type==="invoice"?"Create Proforma Invoice":"Create Quotation";}
 function deleteFile(id){if(confirm("Delete saved record?")){files=files.filter(f=>f.id!==id);save();renderFiles("all")}}
 function newDocument(type){setupDoc(type)}
 function money(n){return Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
