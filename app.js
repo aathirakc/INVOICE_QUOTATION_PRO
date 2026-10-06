@@ -12,7 +12,7 @@ let lines={invoice:[],quotation:[]};
 function save(){localStorage.setItem(key.products,JSON.stringify(products));localStorage.setItem(key.settings,JSON.stringify(settings));localStorage.setItem(key.files,JSON.stringify(files));localStorage.setItem(key.counts,JSON.stringify(counts))}
 function number(type){counts[type]=(counts[type]||0)+1;save();return (type==="invoice"?"INV-":"QUO-")+String(counts[type]).padStart(4,"0")}
 function setupDoc(type){
-  const prefix=type==="invoice"?"Invoice":"Quotation";
+  const prefix=type==="invoice"?"Proforma Invoice":"Quotation";
   $(type+"No").value=number(type);$(type+"Date").value=today();lines[type]=[];
   ["Customer","Phone","Address","Sales"].forEach(x=>$(type+x).value="");
   updateProducts(type);$(type+"Price").value="";renderLines(type);
@@ -115,7 +115,7 @@ async function savePDF(type){
      pdf.setFont('helvetica','bold');
      pdf.setFontSize(7.5);
      pdf.text(String(settings.name||''),side,pageH-4);
-
+     
    }
    const no=$(type+"No").value||type.toUpperCase();
    const customerName=String($(type+"Customer").value||"").trim();
@@ -127,12 +127,12 @@ async function savePDF(type){
    const pdfFileName=(filePrefix+"-"+(firstTwoNames||"Customer")+"-"+(fileDate||"Date")+".pdf").replace(/[\\/:*?"<>|]/g,"-");
    pdf.save(pdfFileName);
    files.push({id:Date.now(),type,no,date:$(type+'Date').value,customer:$(type+'Customer').value,total:totals(type).total,html:area.innerHTML});save();renderFiles('all');
- }catch(err){console.error(err);alert('PDF could not be generated. Please check your internet connection and try again.');}
+ }catch(err){console.error('PDF generation error:',err);alert('PDF could not be generated. Please try again.');}
  finally{area.style.position=old.position;area.style.left=old.left||'-100000px';area.style.top=old.top;area.style.zIndex=old.zIndex;area.style.visibility=old.visibility||'hidden';area.style.display=old.display||'block';area.style.width=old.width||'794px'}
 }
 function renderFiles(filter){
  const arr=files.filter(f=>filter==="all"||f.type===filter).slice().reverse();
- $("fileList").innerHTML=arr.length?arr.map(f=>`<div class="file-row"><b>${f.type==="invoice"?"PROFORMA INVOICE":"Quotation"} ${esc(f.no)}</b><span>${esc(f.customer||"")}</span><span>${esc(f.date)}</span><b>₹${money(f.total)}</b><button class="danger" onclick="deleteFile(${f.id})">Delete</button></div>`).join(""):'<div class="empty">No saved files yet. Saved PDFs are also downloaded to your computer.</div>'
+ $("fileList").innerHTML=arr.length?arr.map(f=>`<div class="file-row"><b>${f.type==="invoice"?"Proforma Invoice":"Quotation"} ${esc(f.no)}</b><span>${esc(f.customer||"")}</span><span>${esc(f.date)}</span><b>₹${money(f.total)}</b><button class="danger" onclick="deleteFile(${f.id})">Delete</button></div>`).join(""):'<div class="empty">No saved files yet. Saved PDFs are also downloaded to your computer.</div>'
 }
 function deleteFile(id){if(confirm("Delete saved record?")){files=files.filter(f=>f.id!==id);save();renderFiles("all")}}
 function newDocument(type){setupDoc(type)}
