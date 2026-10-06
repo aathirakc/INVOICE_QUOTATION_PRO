@@ -12,7 +12,7 @@ let lines={invoice:[],quotation:[]};
 function save(){localStorage.setItem(key.products,JSON.stringify(products));localStorage.setItem(key.settings,JSON.stringify(settings));localStorage.setItem(key.files,JSON.stringify(files));localStorage.setItem(key.counts,JSON.stringify(counts))}
 function number(type){counts[type]=(counts[type]||0)+1;save();return (type==="invoice"?"INV-":"QUO-")+String(counts[type]).padStart(4,"0")}
 function setupDoc(type){
-  const prefix=type==="invoice"?"Proforma Invoice":"Quotation";
+  const prefix=type==="invoice"?"Invoice":"Quotation";
   $(type+"No").value=number(type);$(type+"Date").value=today();lines[type]=[];
   ["Customer","Phone","Address","Sales"].forEach(x=>$(type+x).value="");
   updateProducts(type);$(type+"Price").value="";renderLines(type);
@@ -64,12 +64,12 @@ function makePDFHTML(type){
  const rows=lines[type].map((l,i)=>{const p=products.find(x=>x.id===l.id);if(!p)return '';const price=Number(l.price??p.price)||0,qty=Number(l.qty)||1,amount=price*qty,tax=amount*(Number(p.gst)||0)/100;
    return `<tr><td class="num slno">${i+1}</td><td class="image-cell">${p.image?`<img class="pdf-product-image" src="${p.image}" alt="">`:'—'}</td><td><strong>${esc(p.name)}</strong><small>${esc(p.code)}</small></td><td class="num">₹${money(price)}</td>${isInvoice?`<td class="num">${qty}</td>`:""}<td class="num">${p.gst}%</td><td class="num">₹${money(amount)}</td><td class="num">₹${money(tax)}</td><td class="num">₹${money(amount+tax)}</td></tr>`}).join('');
  return `<div class="pdf-sheet"><div class="pdf-fixed-header"><img src="${PDF_HEADER}" alt="Company Header"></div><div class="pdf-content">
-  <div class="pdf-doc-meta"><div class="pdf-doc-type">${isInvoice?"TAX INVOICE":"QUOTATION"}</div><div><span>${isInvoice?"PI No":"Quotation No"}</span><b>${esc(no)}</b></div><div><span>Date</span><b>${esc(date)}</b></div></div>
+  <div class="pdf-doc-meta"><div class="pdf-doc-type">${isInvoice?"PROFORMA INVOICE":"QUOTATION"}</div><div><span>${isInvoice?"PI No":"Quotation No"}</span><b>${esc(no)}</b></div><div><span>Date</span><b>${esc(date)}</b></div></div>
    <div class="pdf-customer-block"><div class="pdf-section-title">To</div><div class="customer-grid"><div><span>Customer Name</span><b>${esc($(type+"Customer").value||"—")}</b></div><div><span>Phone Number</span><b>${esc($(type+"Phone").value||"—")}</b></div><div><span>Address</span><b>${nl($(type+"Address").value||"—")}</b></div><div><span>Salesperson Name</span><b>${esc($(type+"Sales").value||"—")}</b></div></div></div>
    <table class="pdf-items"><thead><tr><th class="num slno">SL No.</th><th class="image-cell">Image</th><th>Product</th><th class="num">Price</th>${isInvoice?`<th class="num">Qty</th>`:""}<th class="num">GST</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
    <div class="pdf-summary"><div><span>Subtotal</span><b>₹${money(t.subtotal)}</b></div><div><span>GST / Tax</span><b>₹${money(t.tax)}</b></div><div class="pdf-grand"><span>Grand Total</span><b>₹${money(t.total)}</b></div></div>
    <div class="pdf-info-grid"><div class="pdf-info-box"><h3>Bank Details</h3><div><span>Bank</span><b>${esc(s.bank||"—")}</b></div><div><span>Account Name</span><b>${esc(s.accountName||"—")}</b></div><div><span>Account No.</span><b>${esc(s.accountNo||"—")}</b></div><div><span>IFSC</span><b>${esc(s.ifsc||"—")}</b></div><div><span>Branch</span><b>${esc(s.branch||"—")}</b></div><div><span>UPI</span><b>${esc(s.upi||"—")}</b></div></div><div class="pdf-info-box"><h3>Terms &amp; Conditions</h3><div>1. Payment Terms: Immediate Payment</div><div>2. Price: Indicates the cost of each item.</div><div>3. Taxes: As shown above.</div><div>4. Shipping Cost: Extra</div></div></div>
-   <div class="pdf-signature-section"><img src="${AUTH_SIGNATURE}" alt="Authorised Signature"><div class="pdf-signature-label">Authorised Signature</div></div><div class="pdf-address-bottom"><div class="pdf-company-name">${esc(s.name||"")}</div><div>${s.phone?`Phone: ${esc(s.phone)}`:""}${s.email?` &nbsp; | &nbsp; Email: ${esc(s.email)}`:""}</div><div>${s.gst?`GSTIN: ${esc(s.gst)}`:""}${s.website?` &nbsp; | &nbsp; ${esc(s.website)}`:""}</div></div>
+   <div class="pdf-signature-section"><img src="${AUTH_SIGNATURE}" alt="Authorised Signature"><div class="pdf-signature-label">Authorised Signature</div></div><div class="pdf-address-bottom"><div class="pdf-company-name">${esc(s.name||"")}</div><div>${s.phone?`Phone: ${esc(s.phone)}`:""}${s.email?` &nbsp; | &nbsp; Email: ${esc(s.email)}`:""}</div><div>${s.gst?`GSTIN: ${esc(s.gst)}`:""}${s.website?` &nbsp; | &nbsp; ${esc(s.website)}`:""}</div><div>${esc(s.address||"")}</div></div>
  </div><div class="pdf-fixed-footer"><span>${esc(s.name||"")}</span></div></div>`;
 }
 async function savePDF(type){
@@ -84,23 +84,55 @@ async function savePDF(type){
    const canvas=await html2canvas(content,{scale:2,backgroundColor:'#fff',useCORS:true,allowTaint:false,logging:false,width:750,windowWidth:750,scrollX:0,scrollY:0});
    const pdf=new jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
    const pageW=210,pageH=297,headerH=27,footerH=11,side=6,contentW=198,contentH=pageH-headerH-footerH-2;
-   const pxPerMm=canvas.width/contentW;const slicePx=Math.floor(contentH*pxPerMm);
-   const pages=Math.max(1,Math.ceil(canvas.height/slicePx));
-   for(let pg=0;pg<pages;pg++){
-     if(pg)pdf.addPage();
+   // Allow the document to grow naturally. One page is used for short orders;
+   // additional A4 pages are added automatically when the order has more rows.
+   // The company header and footer are repeated on every page.
+   const pxPerMm=canvas.width/contentW;
+   const maxContentPx=Math.floor(contentH*pxPerMm);
+   const renderedContentPx=canvas.height;
+   const pageCount=Math.max(1,Math.ceil(renderedContentPx/maxContentPx));
+   const jpegQuality=0.94;
+   for(let pageIndex=0; pageIndex<pageCount; pageIndex++){
+     if(pageIndex>0) pdf.addPage();
      pdf.addImage(PDF_HEADER,'JPEG',side,0,contentW,headerH,undefined,'FAST');
-     const sy=pg*slicePx, sh=Math.min(slicePx,canvas.height-sy);const slice=document.createElement('canvas');slice.width=canvas.width;slice.height=sh;slice.getContext('2d').drawImage(canvas,0,sy,canvas.width,sh,0,0,canvas.width,sh);
-     pdf.addImage(slice.toDataURL('image/jpeg',0.94),'JPEG',side,headerH,contentW,sh/pxPerMm,undefined,'FAST');
-     pdf.setFillColor(32,41,54);pdf.rect(0,pageH-footerH,pageW,footerH,'F');pdf.setTextColor(255,255,255);pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);pdf.text(String(settings.name||''),side,pageH-4);pdf.text('Thank you for your business',pageW-side,pageH-4,{align:'right'});
+
+     const startY=pageIndex*maxContentPx;
+     const sliceH=Math.min(maxContentPx,renderedContentPx-startY);
+     const pageCanvas=document.createElement('canvas');
+     pageCanvas.width=canvas.width;
+     pageCanvas.height=sliceH;
+     const ctx=pageCanvas.getContext('2d');
+     ctx.fillStyle='#fff';
+     ctx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
+     ctx.drawImage(canvas,0,startY,canvas.width,sliceH,0,0,canvas.width,sliceH);
+     const sliceData=pageCanvas.toDataURL('image/jpeg',jpegQuality);
+     const sliceMm=sliceH/pxPerMm;
+     pdf.addImage(sliceData,'JPEG',side,headerH,contentW,sliceMm,undefined,'FAST');
+
+     pdf.setFillColor(32,41,54);
+     pdf.rect(0,pageH-footerH,pageW,footerH,'F');
+     pdf.setTextColor(255,255,255);
+     pdf.setFont('helvetica','bold');
+     pdf.setFontSize(7.5);
+     pdf.text(String(settings.name||''),side,pageH-4);
+
    }
-   const no=$(type+"No").value||type.toUpperCase();pdf.save((no+'.pdf').replace(/[\\/:*?"<>|]/g,'-'));
+   const no=$(type+"No").value||type.toUpperCase();
+   const customerName=String($(type+"Customer").value||"").trim();
+   const firstTwoNames=customerName.split(/\\s+/).filter(Boolean).slice(0,2).join(" ");
+   const filePrefix=type==="invoice"?"INV":"QUO";
+   const rawDate=String($(type+"Date").value||"").trim();
+   const dateParts=rawDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+   const fileDate=dateParts?`${dateParts[3]}-${dateParts[2]}-${dateParts[1]}`:rawDate.replace(/[^0-9-]/g,"-");
+   const pdfFileName=(filePrefix+"-"+(firstTwoNames||"Customer")+"-"+(fileDate||"Date")+".pdf").replace(/[\\/:*?"<>|]/g,"-");
+   pdf.save(pdfFileName);
    files.push({id:Date.now(),type,no,date:$(type+'Date').value,customer:$(type+'Customer').value,total:totals(type).total,html:area.innerHTML});save();renderFiles('all');
  }catch(err){console.error(err);alert('PDF could not be generated. Please check your internet connection and try again.');}
  finally{area.style.position=old.position;area.style.left=old.left||'-100000px';area.style.top=old.top;area.style.zIndex=old.zIndex;area.style.visibility=old.visibility||'hidden';area.style.display=old.display||'block';area.style.width=old.width||'794px'}
 }
 function renderFiles(filter){
  const arr=files.filter(f=>filter==="all"||f.type===filter).slice().reverse();
- $("fileList").innerHTML=arr.length?arr.map(f=>`<div class="file-row"><b>${f.type==="invoice"?"Invoice":"Quotation"} ${esc(f.no)}</b><span>${esc(f.customer||"")}</span><span>${esc(f.date)}</span><b>₹${money(f.total)}</b><button class="danger" onclick="deleteFile(${f.id})">Delete</button></div>`).join(""):'<div class="empty">No saved files yet. Saved PDFs are also downloaded to your computer.</div>'
+ $("fileList").innerHTML=arr.length?arr.map(f=>`<div class="file-row"><b>${f.type==="invoice"?"PROFORMA INVOICE":"Quotation"} ${esc(f.no)}</b><span>${esc(f.customer||"")}</span><span>${esc(f.date)}</span><b>₹${money(f.total)}</b><button class="danger" onclick="deleteFile(${f.id})">Delete</button></div>`).join(""):'<div class="empty">No saved files yet. Saved PDFs are also downloaded to your computer.</div>'
 }
 function deleteFile(id){if(confirm("Delete saved record?")){files=files.filter(f=>f.id!==id);save();renderFiles("all")}}
 function newDocument(type){setupDoc(type)}
