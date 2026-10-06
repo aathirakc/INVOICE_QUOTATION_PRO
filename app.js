@@ -12,7 +12,7 @@ let lines={invoice:[],quotation:[]};
 function save(){localStorage.setItem(key.products,JSON.stringify(products));localStorage.setItem(key.settings,JSON.stringify(settings));localStorage.setItem(key.files,JSON.stringify(files));localStorage.setItem(key.counts,JSON.stringify(counts))}
 function number(type){counts[type]=(counts[type]||0)+1;save();return (type==="invoice"?"INV-":"QUO-")+String(counts[type]).padStart(4,"0")}
 function setupDoc(type){
-  const prefix=type==="invoice"?"Invoice":"Quotation";
+  const prefix=type==="invoice"?"Proforma Invoice":"Quotation";
   $(type+"No").value=number(type);$(type+"Date").value=today();lines[type]=[];
   ["Customer","Phone","Address","Sales"].forEach(x=>$(type+x).value="");
   updateProducts(type);$(type+"Price").value="";renderLines(type);
@@ -64,13 +64,13 @@ function makePDFHTML(type){
  const rows=lines[type].map((l,i)=>{const p=products.find(x=>x.id===l.id);if(!p)return '';const price=Number(l.price??p.price)||0,qty=Number(l.qty)||1,amount=price*qty,tax=amount*(Number(p.gst)||0)/100;
    return `<tr><td class="num slno">${i+1}</td><td class="image-cell">${p.image?`<img class="pdf-product-image" src="${p.image}" alt="">`:'—'}</td><td><strong>${esc(p.name)}</strong><small>${esc(p.code)}</small></td><td class="num">₹${money(price)}</td>${isInvoice?`<td class="num">${qty}</td>`:""}<td class="num">${p.gst}%</td><td class="num">₹${money(amount)}</td><td class="num">₹${money(tax)}</td><td class="num">₹${money(amount+tax)}</td></tr>`}).join('');
  return `<div class="pdf-sheet"><div class="pdf-fixed-header"><img src="${PDF_HEADER}" alt="Company Header"></div><div class="pdf-content">
-  <div class="pdf-doc-meta"><div class="pdf-doc-type">${isInvoice?"TAX INVOICE":"QUOTATION"}</div><div><span>${isInvoice?"Invoice No":"Quotation No"}</span><b>${esc(no)}</b></div><div><span>Date</span><b>${esc(date)}</b></div></div>
+  <div class="pdf-doc-meta"><div class="pdf-doc-type">${isInvoice?"TAX INVOICE":"QUOTATION"}</div><div><span>${isInvoice?"PI No":"Quotation No"}</span><b>${esc(no)}</b></div><div><span>Date</span><b>${esc(date)}</b></div></div>
    <div class="pdf-customer-block"><div class="pdf-section-title">To</div><div class="customer-grid"><div><span>Customer Name</span><b>${esc($(type+"Customer").value||"—")}</b></div><div><span>Phone Number</span><b>${esc($(type+"Phone").value||"—")}</b></div><div><span>Address</span><b>${nl($(type+"Address").value||"—")}</b></div><div><span>Salesperson Name</span><b>${esc($(type+"Sales").value||"—")}</b></div></div></div>
    <table class="pdf-items"><thead><tr><th class="num slno">SL No.</th><th class="image-cell">Image</th><th>Product</th><th class="num">Price</th>${isInvoice?`<th class="num">Qty</th>`:""}<th class="num">GST</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th></tr></thead><tbody>${rows}</tbody></table>
    <div class="pdf-summary"><div><span>Subtotal</span><b>₹${money(t.subtotal)}</b></div><div><span>GST / Tax</span><b>₹${money(t.tax)}</b></div><div class="pdf-grand"><span>Grand Total</span><b>₹${money(t.total)}</b></div></div>
    <div class="pdf-info-grid"><div class="pdf-info-box"><h3>Bank Details</h3><div><span>Bank</span><b>${esc(s.bank||"—")}</b></div><div><span>Account Name</span><b>${esc(s.accountName||"—")}</b></div><div><span>Account No.</span><b>${esc(s.accountNo||"—")}</b></div><div><span>IFSC</span><b>${esc(s.ifsc||"—")}</b></div><div><span>Branch</span><b>${esc(s.branch||"—")}</b></div><div><span>UPI</span><b>${esc(s.upi||"—")}</b></div></div><div class="pdf-info-box"><h3>Terms &amp; Conditions</h3><div>1. Payment Terms: Immediate Payment</div><div>2. Price: Indicates the cost of each item.</div><div>3. Taxes: As shown above.</div><div>4. Shipping Cost: Extra</div></div></div>
    <div class="pdf-signature-section"><img src="${AUTH_SIGNATURE}" alt="Authorised Signature"><div class="pdf-signature-label">Authorised Signature</div></div><div class="pdf-address-bottom"><div class="pdf-company-name">${esc(s.name||"")}</div><div>${s.phone?`Phone: ${esc(s.phone)}`:""}${s.email?` &nbsp; | &nbsp; Email: ${esc(s.email)}`:""}</div><div>${s.gst?`GSTIN: ${esc(s.gst)}`:""}${s.website?` &nbsp; | &nbsp; ${esc(s.website)}`:""}</div></div>
- </div><div class="pdf-fixed-footer"><span>${esc(s.name||"")}</span><span>Thank you for your business</span></div></div>`;
+ </div><div class="pdf-fixed-footer"><span>${esc(s.name||"")}</span></div></div>`;
 }
 async function savePDF(type){
  if(!lines[type].length){alert("Add at least one product.");return}
